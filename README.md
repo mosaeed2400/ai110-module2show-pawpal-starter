@@ -51,14 +51,42 @@ Today's Schedule
 ## 🧪 Testing PawPal+
 
 Run the full test suite:
-pytest
+
+python -m pytest
 
 Run with coverage:
+
 pytest --cov
+
+**What the tests cover:**
+- Task completion and task addition (happy path)
+- Sorting correctness: chronological order, priority ordering with time tie-break, and 
+  stability when two tasks share the same time
+- Filtering: by pet name, by completion status, both combined, and the `None` vs `False` 
+  distinction for `completed`
+- Recurring tasks: daily/weekly respawn with `due_date` correctly advanced via `timedelta` 
+  (including a month-boundary case), plus detached (no-pet) respawn
+- Conflict detection: same-time clashes, multi-task clashes, completed-task exclusion, and 
+  unassigned-pet labeling
+- Empty/edge states: a pet with no tasks, an owner with no pets, and an empty plan
+- Three tests document **known limitations** rather than hiding them: non-zero-padded time 
+  strings sort incorrectly, an unknown `frequency` value silently behaves like a one-off 
+  task, and calling `mark_complete()` twice on a recurring task spawns a second new 
+  occurrence. These are intentionally left as-is for this project's scope, but are called 
+  out explicitly so the behavior is documented rather than silently wrong.
 
 Sample test output:
 
-# Paste your pytest output here
+tests/test_pawpal.py ................................                          [100%]
+32 passed in 0.03s
+
+**Confidence Level:** ⭐⭐⭐⭐☆ (4/5)
+
+I'm confident the core scheduling logic (sorting, filtering, conflict detection, and 
+recurrence) behaves correctly for the scenarios a typical pet owner would hit. I'm holding 
+back one star because of the three documented known limitations above — none of these 
+would surprise a real user under normal use, but they're real gaps I'd want to close before 
+calling this production-ready.
 
 ## 📐 Smarter Scheduling
 
