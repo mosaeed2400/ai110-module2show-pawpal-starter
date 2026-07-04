@@ -63,8 +63,23 @@ and typos like `"High"` vs `"high"` would have silently broken sorting logic.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One subtle tradeoff lives in `Scheduler.sort_by_priority()`, which sorts using 
+`key=lambda task: (-task.priority, task.preferred_time)` instead of the seemingly simpler 
+`sorted(tasks, key=lambda t: (t.priority, t.preferred_time), reverse=True)`. The `reverse=True` 
+version looks cleaner but is actually wrong: it reverses the *entire* ordering, including 
+the time tie-break, so two equal-priority tasks would come out in descending time order 
+(18:00 before 08:00) instead of ascending. Negating just the priority value keeps HIGH 
+tasks first while leaving the time tie-break in its natural ascending order. I confirmed 
+this was correct by asking my AI coding assistant to review the method for simplification — 
+it recommended keeping the negation as-is and explained exactly why `reverse=True` would 
+introduce this bug, which matched my own reasoning about the tradeoff.
+
+Another tradeoff worth noting: `sort_by_time()` and conflict detection both compare 
+`preferred_time` as plain strings ("HH:MM"). This works correctly only because the format 
+is always zero-padded and 24-hour; it would silently sort incorrectly if a time like "8:00" 
+(un-padded) or 12-hour format ever entered the system. I accepted this tradeoff since it 
+keeps the code simple and the format is controlled internally, but a more robust version 
+would parse times with `datetime.strptime` instead of comparing raw strings.
 
 ---
 
