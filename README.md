@@ -97,14 +97,64 @@ calling this production-ready.
 | Conflict handling | `Scheduler.detect_conflicts()` | Groups tasks by exact `preferred_time`; flags any time slot with 2+ incomplete tasks, across any pet |
 | Recurring tasks | `Task.mark_complete()` | Daily/weekly tasks automatically spawn a fresh incomplete copy with `due_date` advanced via `timedelta` (+1 day or +7 days) |
 
+## Features
+
+- **Owner → Pet → Task model** — an owner holds pets, each pet holds its own care tasks; tasks carry a description, duration, priority, and preferred time.
+- **Priority levels** — tasks are ranked LOW / MEDIUM / HIGH via a `Priority` enum.
+- **Two schedule views** — order tasks chronologically (by preferred time) or by priority (most urgent first, ties broken by earlier time).
+- **Filtering** — filter tasks by pet and/or completion status.
+- **Conflict detection** — flags time slots where two or more outstanding tasks are scheduled at once, shown as plain-language warnings in the UI.
+- **Recurring tasks** — daily or weekly tasks respawn a fresh occurrence (with the due date advanced) when marked complete; one-off tasks simply close.
+- **Mark complete** — tick tasks off directly in the app and watch recurring ones reappear.
+- **Plan explanation** — `explain_plan()` produces a readable, time-ordered summary of the day plus any conflicts.
+- **Interactive Streamlit UI** — add tasks, toggle sort/filter, generate the day's schedule, and complete tasks from the browser.
+- **Tested** — automated test suite covering sorting, filtering, conflict detection, and recurrence.
+
+## Known Limitations
+
+- **`available_minutes` is not enforced.** The `Scheduler` accepts a daily time budget, but `generate_plan()` currently only sorts tasks — it does not cap the plan or drop tasks that exceed the budget.
+- **`Owner.preferences` is stored but unused.** The field exists on the model, but no scheduling logic reads from it yet.
+
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+**Main UI features:** PawPal+ lets a user enter basic owner and pet details, add care 
+tasks with a title, duration, priority, preferred time, and repeat frequency (one-time, 
+daily, or weekly), then view those tasks in a live table. From there, the user can toggle 
+between two sort views (by time or by priority), filter the list by completion status, 
+mark individual tasks complete, and generate a full daily schedule.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+**Example workflow:**
+1. Enter an owner name and add a pet (e.g., "Mochi", a dog).
+2. Add a few care tasks with different priorities and times — for example, a daily 
+   "Morning walk" at 09:00 (HIGH priority) and a weekly "Swimming" session at 11:00 
+   (MEDIUM priority).
+3. Toggle "Sort by" between **By Time** and **By Priority** to see the task list reorder.
+4. Filter the list to **Incomplete** or **Completed** to narrow what's shown.
+5. Click **Generate schedule** to see the full day's plan in time order, along with either 
+   a success message ("No scheduling conflicts") or a plain-language warning if two tasks 
+   land on the same time slot.
+6. Click **Mark complete** on a recurring task — a confirmation message shows the task was 
+   completed and states when the next occurrence is due, since daily/weekly tasks 
+   automatically respawn with an advanced due date.
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+**Key Scheduler behaviors demonstrated:** chronological and priority-based sorting, 
+pet/status filtering, conflict detection with owner-friendly warning text, and automatic 
+recurrence via `due_date` advancement.
+
+**Sample CLI output** (from running `python3 main.py`, which exercises the same Scheduler 
+logic outside the UI):
+
+Insertion Order (as added)
+18:00  Rex: Evening medication
+08:00  Rex: Morning walk
+07:30  Whiskers: Feeding
+Time-Sorted
+07:30  Whiskers: Feeding
+08:00  Rex: Morning walk
+18:00  Rex: Evening medication
+Rex's Incomplete Tasks
+08:00  Morning walk
+Recurring Task (daily)
+Original: Daily walk  due 2026-07-04  (completed=False)
+Respawned: Daily walk  due 2026-07-05  (completed=False)
+→ new due_date is 1 day later, as expected for a daily task
