@@ -46,6 +46,14 @@ def main() -> None:
     for task in scheduler.sort_by_time(all_tasks):
         print(f"{task.preferred_time}  {task.pet.name}: {task.description}")
 
+    # Priority-sorted view — HIGH before MEDIUM before LOW, with same-priority
+    # tasks tie-broken by earlier time.
+    print("\nBy Priority")
+    print("=" * 40)
+    for task in scheduler.sort_by_priority(all_tasks):
+        print(f"{task.priority.name:<6}  {task.preferred_time}  "
+              f"{task.pet.name}: {task.description}")
+
     # Filtered view — only Rex's incomplete tasks
     print("\nRex's Incomplete Tasks")
     print("=" * 40)

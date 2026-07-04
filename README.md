@@ -70,6 +70,9 @@ pytest --cov
   unassigned-pet labeling
 - Next available slot: finding a free slot around existing tasks, skipping completed tasks, 
   a fully booked day returning `None`, and an empty task list returning the start of day
+- Data persistence: round-tripping an owner/pets/tasks graph through JSON, preserving the 
+  `Priority` enum, `due_date`, and the `Task.pet` back-reference, plus a clear error on a 
+  missing file
 - Empty/edge states: a pet with no tasks, an owner with no pets, and an empty plan
 - Three tests document **known limitations** rather than hiding them: non-zero-padded time 
   strings sort incorrectly, an unknown `frequency` value silently behaves like a one-off 
@@ -79,8 +82,9 @@ pytest --cov
 
 Sample test output:
 
-tests/test_pawpal.py .....................................                          [100%]
-37 passed in 0.02s
+tests/test_pawpal.py .....................................                          [ 90%]
+tests/test_persistence.py ....                                                       [100%]
+41 passed in 0.02s
 
 **Confidence Level:** ⭐⭐⭐⭐☆ (4/5)
 
@@ -109,16 +113,32 @@ calling this production-ready.
 - **Conflict detection** — flags time slots where two or more outstanding tasks are scheduled at once, shown as plain-language warnings in the UI.
 - **Recurring tasks** — daily or weekly tasks respawn a fresh occurrence (with the due date advanced) when marked complete; one-off tasks simply close.
 - **Next available slot finder** — given a new task's duration, finds the earliest free time today that doesn't overlap any existing incomplete task.
+- **Data persistence** — save an owner's full pet/task graph to a JSON file and reload it later, preserving priority, due dates, and pet-task relationships.
 - **Mark complete** — tick tasks off directly in the app and watch recurring ones reappear.
 - **Plan explanation** — `explain_plan()` produces a readable, time-ordered summary of the day plus any conflicts.
 - **Interactive Streamlit UI** — add tasks, toggle sort/filter, generate the day's schedule, and complete tasks from the browser.
-- **Tested** — automated test suite covering sorting, filtering, conflict detection, recurrence, and slot-finding.
+- **Tested** — automated test suite covering sorting, filtering, conflict detection, recurrence, slot-finding, and persistence.
 
 ## Known Limitations
 
 - **`available_minutes` is not enforced.** The `Scheduler` accepts a daily time budget, but `generate_plan()` currently only sorts tasks — it does not cap the plan or drop tasks that exceed the budget.
 - **`Owner.preferences` is stored but unused.** The field exists on the model, but no scheduling logic reads from it yet.
 - **`find_next_available_slot()` checks a 15-minute grid**, so it can miss a valid but narrower off-grid gap, and it doesn't consult `available_minutes` either.
+- **Persistence is manual and CLI-only.** `save_to_json`/`load_from_json` exist in `pawpal_system.py` and are demonstrated in `main.py`, but the Streamlit UI (`app.py`) does not yet call them — the browser app's data still resets each session.
+
+## 💾 Data Persistence
+
+PawPal+ can save an owner's entire pet/task graph to a JSON file and reload it later, so data isn't lost between runs of `main.py`.
+
+**How it works:**
+- `save_to_json(owner, filepath)` walks the object graph (`Owner` → `Pet` → `Task`) and converts each object to a plain dictionary using hand-written helper functions (`_owner_to_dict`, `_pet_to_dict`, `_task_to_dict`) — no external serialization library is used, to keep dependencies minimal.
+- Three details needed special handling:
+  - **The `Priority` enum** is stored as its name (`"HIGH"`) rather than its raw integer value, so the file stays human-readable and isn't tied to the enum's internal numbering. It's restored with `Priority[name]`.
+  - **The `due_date` field** (a Python `date`) is stored as an ISO 8601 string (`"2026-07-04"`) via `.isoformat()`, and restored with `date.fromisoformat()`.
+  - **The circular `Task.pet` back-reference** is never serialized at all (it would create a cycle in the JSON). On load, each task is reattached to its pet via `pet.add_task(task)` — the same method used everywhere else in the app to keep that back-reference in sync — so the reconstructed object graph is identical in shape to a freshly built one.
+- `load_from_json(filepath)` reverses the process, rebuilding a full `Owner` with all its `Pet`s and `Task`s. A missing file raises a standard `FileNotFoundError` rather than a custom error, since that's already the clearest signal for this situation.
+
+**Files modified:** `pawpal_system.py` (added `save_to_json`, `load_from_json`, and their private `_to_dict`/`_from_dict` helpers), `main.py` (added a demo section), `tests/test_persistence.py` (new file, 4 tests).
 
 ## 📸 Demo Walkthrough
 
