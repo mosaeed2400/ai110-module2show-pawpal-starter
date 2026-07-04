@@ -2,6 +2,8 @@
 the Scheduler's priority sorting, filtering, recurring tasks, and conflict
 detection."""
 
+from tabulate import tabulate
+
 from pawpal_system import (
     Owner,
     Pet,
@@ -11,6 +13,37 @@ from pawpal_system import (
     save_to_json,
     load_from_json,
 )
+
+# Emoji indicators for priority — chosen over an ANSI-color dependency so the
+# output renders consistently across terminals with no extra install.
+PRIORITY_ICON = {
+    Priority.HIGH: "🔴",
+    Priority.MEDIUM: "🟡",
+    Priority.LOW: "🟢",
+}
+
+
+def priority_label(priority: Priority) -> str:
+    """Return an emoji + name label for a priority, e.g. '🔴 HIGH'."""
+    return f"{PRIORITY_ICON[priority]} {priority.name}"
+
+
+def task_table(tasks) -> str:
+    """Render a list of tasks as a clean ASCII table with a priority column."""
+    rows = [
+        [
+            priority_label(task.priority),
+            task.preferred_time,
+            task.pet.name if task.pet else "Unassigned",
+            task.description,
+        ]
+        for task in tasks
+    ]
+    return tabulate(
+        rows,
+        headers=["Priority", "Time", "Pet", "Task"],
+        tablefmt="rounded_outline",
+    )
 
 
 def main() -> None:
@@ -42,17 +75,12 @@ def main() -> None:
 
     # Time-sorted view — should come out 07:30, 08:00, 18:00
     print("\nTime-Sorted")
-    print("=" * 40)
-    for task in scheduler.sort_by_time(all_tasks):
-        print(f"{task.preferred_time}  {task.pet.name}: {task.description}")
+    print(task_table(scheduler.sort_by_time(all_tasks)))
 
     # Priority-sorted view — HIGH before MEDIUM before LOW, with same-priority
     # tasks tie-broken by earlier time.
     print("\nBy Priority")
-    print("=" * 40)
-    for task in scheduler.sort_by_priority(all_tasks):
-        print(f"{task.priority.name:<6}  {task.preferred_time}  "
-              f"{task.pet.name}: {task.description}")
+    print(task_table(scheduler.sort_by_priority(all_tasks)))
 
     # Filtered view — only Rex's incomplete tasks
     print("\nRex's Incomplete Tasks")

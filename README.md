@@ -117,6 +117,7 @@ calling this production-ready.
 - **Mark complete** — tick tasks off directly in the app and watch recurring ones reappear.
 - **Plan explanation** — `explain_plan()` produces a readable, time-ordered summary of the day plus any conflicts.
 - **Interactive Streamlit UI** — add tasks, toggle sort/filter, generate the day's schedule, and complete tasks from the browser.
+- **Formatted CLI output** — task lists render as clean tables with priority emoji indicators for quick visual scanning.
 - **Tested** — automated test suite covering sorting, filtering, conflict detection, recurrence, slot-finding, and persistence.
 
 ## Known Limitations
@@ -139,6 +140,21 @@ PawPal+ can save an owner's entire pet/task graph to a JSON file and reload it l
 - `load_from_json(filepath)` reverses the process, rebuilding a full `Owner` with all its `Pet`s and `Task`s. A missing file raises a standard `FileNotFoundError` rather than a custom error, since that's already the clearest signal for this situation.
 
 **Files modified:** `pawpal_system.py` (added `save_to_json`, `load_from_json`, and their private `_to_dict`/`_from_dict` helpers), `main.py` (added a demo section), `tests/test_persistence.py` (new file, 4 tests).
+
+## 🎨 Output Formatting
+
+The CLI demo (`main.py`) renders task lists as clean ASCII tables using the 
+[`tabulate`](https://pypi.org/project/tabulate/) library (`tablefmt="rounded_outline"`), 
+applied to the "Time-Sorted" and "By Priority" views. Each row includes a priority column 
+with an emoji indicator — 🔴 HIGH, 🟡 MEDIUM, 🟢 LOW — implemented via a small 
+`PRIORITY_ICON` lookup dict and a `priority_label()` helper in `main.py`. Emoji were chosen 
+over a color library like `colorama` to avoid an extra dependency while still giving an 
+immediate visual read on task urgency, and to render consistently across terminals without 
+needing ANSI color support.
+
+**Files modified:** `main.py` (added `PRIORITY_ICON`, `priority_label()`, `task_table()`, 
+and applied `tabulate` to the Time-Sorted and By Priority sections), `requirements.txt` 
+(added `tabulate>=0.9`).
 
 ## 📸 Demo Walkthrough
 
