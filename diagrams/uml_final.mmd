@@ -1,0 +1,48 @@
+classDiagram
+    class Priority {
+        <<enumeration>>
+        LOW = 1
+        MEDIUM = 2
+        HIGH = 3
+    }
+    class Owner {
+        +String name
+        +List~Pet~ pets
+        +Dict preferences
+        +add_pet(pet) None
+        +get_all_tasks() List~Task~
+    }
+    class Pet {
+        +String name
+        +String species
+        +String breed
+        +List~Task~ tasks
+        +add_task(task) None
+        +get_tasks() List~Task~
+    }
+    class Task {
+        +String description
+        +int duration
+        +Priority priority
+        +String preferred_time
+        +bool completed
+        +String frequency
+        +date due_date
+        +Optional~Pet~ pet
+        +mark_complete() Optional~Task~
+    }
+    class Scheduler {
+        +Owner owner
+        +int available_minutes
+        +generate_plan() List~Task~
+        +sort_by_priority(tasks) List~Task~
+        +sort_by_time(tasks) List~Task~
+        +filter_tasks(tasks, pet_name, completed) List~Task~
+        +detect_conflicts(tasks) List~String~
+        +explain_plan(tasks) String
+    }
+    Owner "1" o-- "many" Pet : has
+    Pet "1" o-- "many" Task : has
+    Task "many" --> "1" Pet : belongs to (back-ref)
+    Task ..> Priority : uses
+    Scheduler "1" --> "1" Owner : reads from
