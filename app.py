@@ -1,5 +1,7 @@
 import streamlit as st
 
+from pawpal_system import Owner, Pet
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -42,6 +44,20 @@ st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
+
+# Persist a real Owner across reruns. Streamlit re-executes this whole script
+# on every interaction, so anything not stored in st.session_state is rebuilt
+# from scratch. Creating the Owner only when it's missing keeps it stable.
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner(owner_name)
+
+owner = st.session_state.owner
+
+# Create the Pet once and attach it to the owner. The flag records that we've
+# already added it, so we don't add a duplicate pet on the next rerun.
+if not st.session_state.get("pet_created", False):
+    owner.add_pet(Pet(pet_name, species, ""))
+    st.session_state.pet_created = True
 
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
