@@ -2,7 +2,15 @@
 the Scheduler's priority sorting, filtering, recurring tasks, and conflict
 detection."""
 
-from pawpal_system import Owner, Pet, Task, Scheduler, Priority
+from pawpal_system import (
+    Owner,
+    Pet,
+    Task,
+    Scheduler,
+    Priority,
+    save_to_json,
+    load_from_json,
+)
 
 
 def main() -> None:
@@ -80,6 +88,23 @@ def main() -> None:
     packed = [Task("All-day event", 24 * 60, Priority.HIGH, "00:00")]
     print(f"→ next free 30-min slot in a fully booked day: "
           f"{scheduler.find_next_available_slot(packed, duration=30)}")
+
+    # Persistence — save the whole owner/pet/task graph to disk, then load it
+    # back into a fresh object and confirm the reconstructed data matches.
+    print("\nPersistence (save/load JSON)")
+    print("=" * 40)
+    save_to_json(alex, "data.json")
+    print("Saved owner 'Alex' to data.json")
+
+    loaded = load_from_json("data.json")
+    print(f"Loaded owner: {loaded.name}")
+    print(f"  pets: {[pet.name for pet in loaded.pets]}")
+    print(f"  total tasks: {len(loaded.get_all_tasks())} "
+          f"(original had {len(alex.get_all_tasks())})")
+
+    names_match = [p.name for p in loaded.pets] == [p.name for p in alex.pets]
+    counts_match = len(loaded.get_all_tasks()) == len(alex.get_all_tasks())
+    print(f"→ data matches original: {names_match and counts_match}")
 
 
 if __name__ == "__main__":

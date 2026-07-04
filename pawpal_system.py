@@ -8,6 +8,7 @@ explanation are all implemented.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import IntEnum
@@ -234,3 +235,96 @@ class Scheduler:
         else:
             lines.append("No conflicts.")
         return "\n".join(lines)
+
+
+# --- Persistence -----------------------------------------------------------
+#
+# Serialize an Owner (with its Pets and Tasks) to a plain JSON file using
+# hand-written dict conversion — no third-party serialization library. Three
+# fields need special handling:
+#   * Priority is stored as its name ("HIGH") for readability, restored via
+#     Priority[name].
+#   * due_date (a date) is stored as an ISO string, restored via fromisoformat.
+#   * Task.pet is a back-reference that forms a cycle (Pet <-> Task), so it is
+#     NOT serialized; on load it is re-established with Pet.add_task(), exactly
+#     as normal task creation does.
+
+
+def _task_to_dict(task: Task) -> Dict:
+    """Convert a Task to a JSON-safe dict. The pet back-reference is omitted
+    on purpose — it forms a cycle and is reconstructed on load."""
+    return {
+        "description": task.description,
+        "duration": task.duration,
+        "priority": task.priority.name,  # e.g. "HIGH", not the int value
+        "preferred_time": task.preferred_time,
+        "completed": task.completed,
+        "frequency": task.frequency,
+        "due_date": task.due_date.isoformat(),  # "YYYY-MM-DD"
+    }
+
+
+def _pet_to_dict(pet: Pet) -> Dict:
+    """Convert a Pet and its tasks to a JSON-safe dict."""
+    return {
+        "name": pet.name,
+        "species": pet.species,
+        "breed": pet.breed,
+        "tasks": [_task_to_dict(t) for t in pet.tasks],
+    }
+
+
+def _owner_to_dict(owner: Owner) -> Dict:
+    """Convert an Owner and its full pet/task graph to a JSON-safe dict."""
+    return {
+        "name": owner.name,
+        "preferences": owner.preferences,
+        "pets": [_pet_to_dict(p) for p in owner.pets],
+    }
+
+
+def save_to_json(owner: Owner, filepath: str) -> None:
+    """Serialize an Owner (with all Pets and their Tasks) to a JSON file."""
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(_owner_to_dict(owner), f, indent=2)
+
+
+def _task_from_dict(data: Dict) -> Task:
+    """Reconstruct a Task from its dict form. The pet back-reference is left
+    as None here; the caller attaches it via Pet.add_task()."""
+    return Task(
+        description=data["description"],
+        duration=data["duration"],
+        priority=Priority[data["priority"]],  # name -> enum member
+        preferred_time=data["preferred_time"],
+        completed=data["completed"],
+        frequency=data["frequency"],
+        due_date=date.fromisoformat(data["due_date"]),
+    )
+
+
+def _pet_from_dict(data: Dict) -> Pet:
+    """Reconstruct a Pet and its tasks from dict form, re-establishing each
+    task's back-reference through add_task()."""
+    pet = Pet(name=data["name"], species=data["species"], breed=data["breed"])
+    for task_data in data["tasks"]:
+        # add_task appends the task AND sets task.pet -> pet, restoring the
+        # back-reference exactly as it was created originally.
+        pet.add_task(_task_from_dict(task_data))
+    return pet
+
+
+def load_from_json(filepath: str) -> Owner:
+    """Reconstruct a full Owner (with Pets and Tasks, back-references intact)
+    from a JSON file written by save_to_json.
+
+    Raises FileNotFoundError if the file does not exist — the standard, clear
+    error for a missing path, left to propagate rather than masked.
+    """
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    owner = Owner(name=data["name"], preferences=data.get("preferences", {}))
+    for pet_data in data["pets"]:
+        owner.add_pet(_pet_from_dict(pet_data))
+    return owner
