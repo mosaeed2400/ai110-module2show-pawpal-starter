@@ -9,6 +9,7 @@ explanation are all implemented.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from enum import IntEnum
 from typing import Dict, List, Optional
 
@@ -29,6 +30,9 @@ class Task:
     preferred_time: str
     completed: bool = False
     frequency: str = ""
+    # Calendar day this task is due. Defaults to today; default_factory (not a
+    # bare date.today()) ensures it's evaluated per-instance, not once at import.
+    due_date: date = field(default_factory=date.today)
     # Back-reference to the owning Pet. Excluded from repr/compare to avoid
     # infinite recursion and equality cycles through the Pet <-> Task graph.
     pet: Optional[Pet] = field(default=None, repr=False, compare=False)
@@ -38,10 +42,13 @@ class Task:
 
         For a recurring task (frequency "daily"/"weekly"), spawn the next
         occurrence: a fresh incomplete copy at the same preferred_time, added
-        to the same pet. Returns the new task, or None for one-off tasks.
+        to the same pet, with due_date advanced past this one (a daily task
+        respawns one day later, a weekly task seven days later). Returns the
+        new task, or None for one-off tasks.
         """
         self.completed = True
-        if self.frequency not in ("daily", "weekly"):
+        step = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}.get(self.frequency)
+        if step is None:
             return None
         next_task = Task(
             description=self.description,
@@ -49,6 +56,7 @@ class Task:
             priority=self.priority,
             preferred_time=self.preferred_time,
             frequency=self.frequency,
+            due_date=self.due_date + step,
         )
         if self.pet is not None:
             self.pet.add_task(next_task)  # add_task sets the back-reference

@@ -45,6 +45,19 @@ def main() -> None:
     for task in rex_pending:
         print(f"{task.preferred_time}  {task.description}")
 
+    # Recurring task — complete a daily task and show the respawn's new due_date
+    print("\nRecurring Task (daily)")
+    print("=" * 40)
+    daily_walk = Task("Daily walk", 30, Priority.HIGH, "08:00", frequency="daily")
+    rex.add_task(daily_walk)
+    print(f"Original: {daily_walk.description}  due {daily_walk.due_date}  "
+          f"(completed={daily_walk.completed})")
+    next_walk = daily_walk.mark_complete()
+    print(f"Respawned: {next_walk.description}  due {next_walk.due_date}  "
+          f"(completed={next_walk.completed})")
+    print(f"→ new due_date is {(next_walk.due_date - daily_walk.due_date).days} "
+          f"day later, as expected for a daily task")
+
 
 if __name__ == "__main__":
     main()
