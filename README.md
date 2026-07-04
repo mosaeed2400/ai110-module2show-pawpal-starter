@@ -68,6 +68,8 @@ pytest --cov
   (including a month-boundary case), plus detached (no-pet) respawn
 - Conflict detection: same-time clashes, multi-task clashes, completed-task exclusion, and 
   unassigned-pet labeling
+- Next available slot: finding a free slot around existing tasks, skipping completed tasks, 
+  a fully booked day returning `None`, and an empty task list returning the start of day
 - Empty/edge states: a pet with no tasks, an owner with no pets, and an empty plan
 - Three tests document **known limitations** rather than hiding them: non-zero-padded time 
   strings sort incorrectly, an unknown `frequency` value silently behaves like a one-off 
@@ -77,8 +79,8 @@ pytest --cov
 
 Sample test output:
 
-tests/test_pawpal.py ................................                          [100%]
-32 passed in 0.03s
+tests/test_pawpal.py .....................................                          [100%]
+37 passed in 0.02s
 
 **Confidence Level:** ⭐⭐⭐⭐☆ (4/5)
 
@@ -96,6 +98,7 @@ calling this production-ready.
 | Filtering | `Scheduler.filter_tasks(pet_name=..., completed=...)` | Filters compose — pass either, both, or neither to narrow by pet and/or completion status |
 | Conflict handling | `Scheduler.detect_conflicts()` | Groups tasks by exact `preferred_time`; flags any time slot with 2+ incomplete tasks, across any pet |
 | Recurring tasks | `Task.mark_complete()` | Daily/weekly tasks automatically spawn a fresh incomplete copy with `due_date` advanced via `timedelta` (+1 day or +7 days) |
+| Next available slot | `Scheduler.find_next_available_slot(tasks, duration)` | Finds the earliest free "HH:MM" slot on a 15-min grid, skipping completed tasks and occupied intervals; doesn't consult `available_minutes` |
 
 ## Features
 
@@ -105,15 +108,17 @@ calling this production-ready.
 - **Filtering** — filter tasks by pet and/or completion status.
 - **Conflict detection** — flags time slots where two or more outstanding tasks are scheduled at once, shown as plain-language warnings in the UI.
 - **Recurring tasks** — daily or weekly tasks respawn a fresh occurrence (with the due date advanced) when marked complete; one-off tasks simply close.
+- **Next available slot finder** — given a new task's duration, finds the earliest free time today that doesn't overlap any existing incomplete task.
 - **Mark complete** — tick tasks off directly in the app and watch recurring ones reappear.
 - **Plan explanation** — `explain_plan()` produces a readable, time-ordered summary of the day plus any conflicts.
 - **Interactive Streamlit UI** — add tasks, toggle sort/filter, generate the day's schedule, and complete tasks from the browser.
-- **Tested** — automated test suite covering sorting, filtering, conflict detection, and recurrence.
+- **Tested** — automated test suite covering sorting, filtering, conflict detection, recurrence, and slot-finding.
 
 ## Known Limitations
 
 - **`available_minutes` is not enforced.** The `Scheduler` accepts a daily time budget, but `generate_plan()` currently only sorts tasks — it does not cap the plan or drop tasks that exceed the budget.
 - **`Owner.preferences` is stored but unused.** The field exists on the model, but no scheduling logic reads from it yet.
+- **`find_next_available_slot()` checks a 15-minute grid**, so it can miss a valid but narrower off-grid gap, and it doesn't consult `available_minutes` either.
 
 ## 📸 Demo Walkthrough
 
@@ -138,23 +143,9 @@ mark individual tasks complete, and generate a full daily schedule.
    automatically respawn with an advanced due date.
 
 **Key Scheduler behaviors demonstrated:** chronological and priority-based sorting, 
-pet/status filtering, conflict detection with owner-friendly warning text, and automatic 
-recurrence via `due_date` advancement.
+pet/status filtering, conflict detection with owner-friendly warning text, automatic 
+recurrence via `due_date` advancement, and finding the next available time slot around 
+existing commitments.
 
 **Sample CLI output** (from running `python3 main.py`, which exercises the same Scheduler 
 logic outside the UI):
-
-Insertion Order (as added)
-18:00  Rex: Evening medication
-08:00  Rex: Morning walk
-07:30  Whiskers: Feeding
-Time-Sorted
-07:30  Whiskers: Feeding
-08:00  Rex: Morning walk
-18:00  Rex: Evening medication
-Rex's Incomplete Tasks
-08:00  Morning walk
-Recurring Task (daily)
-Original: Daily walk  due 2026-07-04  (completed=False)
-Respawned: Daily walk  due 2026-07-05  (completed=False)
-→ new due_date is 1 day later, as expected for a daily task

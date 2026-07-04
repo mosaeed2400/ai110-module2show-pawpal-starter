@@ -311,6 +311,56 @@ def test_daily_respawn_crosses_month_boundary():
     assert next_task.due_date == date(2026, 2, 1)
 
 
+# --- Next available slot ---------------------------------------------------
+
+
+def test_find_next_available_slot_finds_free_slot():
+    scheduler = make_scheduler()
+    # Occupies 08:00-08:30. A 30-min task can't start at 08:00 (overlap) but
+    # 08:30 is clear, and 15-min grid steps reach it exactly.
+    existing = [Task("Walk", 30, Priority.HIGH, "08:00")]
+
+    slot = scheduler.find_next_available_slot(existing, duration=30)
+
+    # 00:00 is actually the earliest free slot (the day is empty before 08:00),
+    # so the search returns the very start rather than jumping past the task.
+    assert slot == "00:00"
+
+
+def test_find_next_available_slot_skips_early_conflict():
+    scheduler = make_scheduler()
+    # Block the start of the day so the search must step past the conflict:
+    # 00:00-00:45 is occupied, so a 30-min task first fits at 00:45.
+    existing = [Task("Early block", 45, Priority.HIGH, "00:00")]
+
+    slot = scheduler.find_next_available_slot(existing, duration=30)
+
+    assert slot == "00:45"
+
+
+def test_find_next_available_slot_fully_booked_returns_none():
+    scheduler = make_scheduler()
+    # One task spanning the entire day leaves no room for anything.
+    existing = [Task("All-day event", 24 * 60, Priority.HIGH, "00:00")]
+
+    assert scheduler.find_next_available_slot(existing, duration=30) is None
+
+
+def test_find_next_available_slot_empty_list_returns_start_of_day():
+    scheduler = make_scheduler()
+
+    # No existing tasks -> the earliest candidate (00:00) is immediately free.
+    assert scheduler.find_next_available_slot([], duration=30) == "00:00"
+
+
+def test_find_next_available_slot_ignores_completed_tasks():
+    scheduler = make_scheduler()
+    # A completed task at 00:00 shouldn't block the slot it nominally occupies.
+    done = Task("Done", 45, Priority.LOW, "00:00", completed=True)
+
+    assert scheduler.find_next_available_slot([done], duration=30) == "00:00"
+
+
 # --- Aggregation and empty states ------------------------------------------
 
 

@@ -162,6 +162,61 @@ class Scheduler:
                 conflicts.append(f"{time}: {labels}")
         return conflicts
 
+    def find_next_available_slot(
+        self, tasks: List[Task], duration: int, step: int = 15
+    ) -> Optional[str]:
+        """Find the earliest "HH:MM" today where a `duration`-minute task fits.
+
+        Approach: treat each *incomplete* existing task as occupying the
+        half-open interval [preferred_time, preferred_time + its duration).
+        Walk candidate start times from 00:00 through the end of the day in
+        `step`-minute increments (default 15). Return the first candidate whose
+        own [start, start + duration) interval fits before end of day
+        (24:00 / 1440 minutes) and overlaps none of the occupied intervals.
+        Return None if the day is too full for the task to fit anywhere.
+
+        Completed tasks are ignored — a finished task no longer blocks time.
+
+        Limitations:
+        - Only checks slots on the `step` grid, so it can miss a valid slot
+          that starts off-grid (e.g. a 10-min gap at 08:05 is invisible on a
+          15-min grid). It favors simplicity over optimal packing.
+        - Does NOT consult the scheduler's available_minutes budget: it reports
+          where a task *could* go in the day, not whether the owner still has
+          spare time in their daily allotment.
+        - Assumes zero-padded "HH:MM" preferred_time (the same assumption
+          sort_by_time relies on); non-padded times parse incorrectly.
+        """
+        end_of_day = 24 * 60  # 1440 — the exclusive end boundary (midnight)
+
+        # Build the occupied intervals from incomplete tasks only.
+        occupied = []  # list of (start_minute, end_minute)
+        for task in tasks:
+            if task.completed:
+                continue
+            start = self._to_minutes(task.preferred_time)
+            occupied.append((start, start + task.duration))
+
+        candidate = 0
+        while candidate + duration <= end_of_day:
+            new_end = candidate + duration
+            # Half-open overlap test: [candidate, new_end) vs [s, e).
+            if not any(candidate < e and s < new_end for s, e in occupied):
+                return self._to_hhmm(candidate)
+            candidate += step
+        return None
+
+    @staticmethod
+    def _to_minutes(hhmm: str) -> int:
+        """Convert a zero-padded "HH:MM" string to minutes since midnight."""
+        hours, minutes = hhmm.split(":")
+        return int(hours) * 60 + int(minutes)
+
+    @staticmethod
+    def _to_hhmm(total_minutes: int) -> str:
+        """Convert minutes since midnight back to a zero-padded "HH:MM" string."""
+        return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
     def explain_plan(self, tasks: List[Task]) -> str:
         """Return a human-readable plan: tasks in time order, then any conflicts."""
         lines = ["Today's plan:"]

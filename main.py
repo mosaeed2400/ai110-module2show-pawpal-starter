@@ -58,6 +58,29 @@ def main() -> None:
     print(f"→ new due_date is {(next_walk.due_date - daily_walk.due_date).days} "
           f"day later, as expected for a daily task")
 
+    # Next available slot — fit a new 45-min task around the existing incomplete
+    # tasks. A "quiet hours" block (00:00-07:00) plus Whiskers' feeding
+    # (07:30-07:40) and Rex's morning walk (08:00-08:30) are all outstanding, so
+    # the search must step past every early candidate before landing on the
+    # first real gap at 08:30.
+    print("\nFind Next Available Slot")
+    print("=" * 40)
+    quiet_hours = Task("Sleep/quiet hours", 7 * 60, Priority.LOW, "00:00")
+    incomplete = [quiet_hours] + scheduler.filter_tasks(all_tasks, completed=False)
+    print("Outstanding tasks blocking time:")
+    for task in scheduler.sort_by_time(incomplete):
+        end = scheduler._to_hhmm(scheduler._to_minutes(task.preferred_time) + task.duration)
+        print(f"  {task.preferred_time}-{end}  {task.description} ({task.duration} min)")
+
+    slot = scheduler.find_next_available_slot(incomplete, duration=45)
+    print(f"→ next free 45-min slot: {slot}  "
+          f"(searched past quiet hours, feeding, and the walk)")
+
+    # A day packed solid from 00:00 shows the None case.
+    packed = [Task("All-day event", 24 * 60, Priority.HIGH, "00:00")]
+    print(f"→ next free 30-min slot in a fully booked day: "
+          f"{scheduler.find_next_available_slot(packed, duration=30)}")
+
 
 if __name__ == "__main__":
     main()
