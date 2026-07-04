@@ -32,7 +32,7 @@ class Task:
     pet: Optional[Pet] = field(default=None, repr=False, compare=False)
 
     def mark_complete(self) -> None:
-        pass
+        self.completed = True
 
 
 @dataclass
@@ -43,12 +43,11 @@ class Pet:
     tasks: List[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
-        # Phase 2: append to self.tasks AND set task.pet = self to keep the
-        # back-reference in sync.
-        pass
+        self.tasks.append(task)
+        task.pet = self  # keep the back-reference in sync
 
     def get_tasks(self) -> List[Task]:
-        pass
+        return self.tasks
 
 
 class Owner:
@@ -58,10 +57,10 @@ class Owner:
         self.preferences: Dict = preferences if preferences is not None else {}
 
     def add_pet(self, pet: Pet) -> None:
-        pass
+        self.pets.append(pet)
 
     def get_all_tasks(self) -> List[Task]:
-        pass
+        return [task for pet in self.pets for task in pet.get_tasks()]
 
 
 class Scheduler:
@@ -70,13 +69,16 @@ class Scheduler:
         self.available_minutes = available_minutes
 
     def generate_plan(self) -> List[Task]:
-        pass
+        tasks = self.owner.get_all_tasks()
+        return self.sort_by_time(tasks)
 
     def sort_by_priority(self, tasks: List[Task]) -> List[Task]:
         pass
 
     def sort_by_time(self, tasks: List[Task]) -> List[Task]:
-        pass
+        # preferred_time is "HH:MM" 24-hour; string sort matches chronological
+        # order for that fixed-width format.
+        return sorted(tasks, key=lambda task: task.preferred_time)
 
     def filter_tasks(self, tasks: List[Task], criteria) -> List[Task]:
         pass
