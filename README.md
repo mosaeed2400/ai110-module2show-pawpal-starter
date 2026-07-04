@@ -26,11 +26,9 @@ Your final app should:
 
 ### Setup
 
-```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
 
 ### Suggested workflow
 
@@ -44,31 +42,23 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
-
-```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
-```
+Today's Schedule
+========================================
+07:30  Whiskers: Feeding (MEDIUM)
+08:00  Rex: Morning walk (HIGH)
+18:00  Rex: Evening medication (HIGH)
 
 ## 🧪 Testing PawPal+
 
-```bash
-# Run the full test suite:
+Run the full test suite:
 pytest
 
-# Run with coverage:
+Run with coverage:
 pytest --cov
-```
 
 Sample test output:
 
-```
 # Paste your pytest output here
-```
 
 ## 📐 Smarter Scheduling
 
