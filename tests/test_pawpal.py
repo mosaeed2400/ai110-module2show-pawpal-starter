@@ -51,6 +51,42 @@ def test_weekly_task_respawns_seven_days_later():
     assert next_task.frequency == "weekly"
 
 
+def test_weekly_task_across_month_boundary():
+    task = Task(
+        "Fence check",
+        20,
+        Priority.MEDIUM,
+        "09:00",
+        frequency="weekly",
+        due_date=date(2024, 1, 26),
+    )
+
+    next_task = task.mark_complete()
+
+    assert next_task is not None
+    assert next_task.due_date == date(2024, 2, 2)
+    assert next_task.completed is False
+    assert next_task.frequency == "weekly"
+
+
+def test_weekly_task_across_year_boundary():
+    task = Task(
+        "Holiday check",
+        30,
+        Priority.MEDIUM,
+        "10:00",
+        frequency="weekly",
+        due_date=date(2023, 12, 28),
+    )
+
+    next_task = task.mark_complete()
+
+    assert next_task is not None
+    assert next_task.due_date == date(2024, 1, 4)
+    assert next_task.completed is False
+    assert next_task.frequency == "weekly"
+
+
 def test_non_recurring_task_does_not_respawn():
     task = Task("One-off bath", 20, Priority.LOW, "12:00")
 

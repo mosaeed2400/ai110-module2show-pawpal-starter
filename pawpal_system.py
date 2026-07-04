@@ -38,18 +38,28 @@ class Task:
     # infinite recursion and equality cycles through the Pet <-> Task graph.
     pet: Optional[Pet] = field(default=None, repr=False, compare=False)
 
+    def next_due_date(self) -> date:
+        """Return the next due date for a recurring task.
+
+        Daily tasks advance by 1 day and weekly tasks advance by 7 days.
+        Using timedelta ensures month and year boundaries are handled correctly.
+        """
+        if self.frequency == "daily":
+            return self.due_date + timedelta(days=1)
+        if self.frequency == "weekly":
+            return self.due_date + timedelta(days=7)
+        raise ValueError(f"Not a recurring task: {self.frequency!r}")
+
     def mark_complete(self) -> Optional[Task]:
         """Mark this task completed.
 
         For a recurring task (frequency "daily"/"weekly"), spawn the next
         occurrence: a fresh incomplete copy at the same preferred_time, added
-        to the same pet, with due_date advanced past this one (a daily task
-        respawns one day later, a weekly task seven days later). Returns the
-        new task, or None for one-off tasks.
+        to the same pet, with due_date advanced past this one.
+        Returns the new task, or None for one-off tasks.
         """
         self.completed = True
-        step = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}.get(self.frequency)
-        if step is None:
+        if self.frequency not in ("daily", "weekly"):
             return None
         next_task = Task(
             description=self.description,
@@ -57,7 +67,7 @@ class Task:
             priority=self.priority,
             preferred_time=self.preferred_time,
             frequency=self.frequency,
-            due_date=self.due_date + step,
+            due_date=self.next_due_date(),
         )
         if self.pet is not None:
             self.pet.add_task(next_task)  # add_task sets the back-reference

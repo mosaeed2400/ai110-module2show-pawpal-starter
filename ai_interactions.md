@@ -50,13 +50,13 @@ it doesn't consult `available_minutes`, and it can miss off-grid slots narrower 
 
 | | Option A | Option B |
 |-|----------|----------|
-| **Model / tool used** | | |
-| **Prompt** | | |
-| **Response summary** | | |
-| **What was useful** | | |
-| **Problems noticed** | | |
-| **Decision** | | |
+| **Model / tool used** | Claude Code (VS Code) | GitHub Copilot (VS Code) |
+| **Prompt** | "I have a Task class with a frequency field ('daily'/'weekly') and a due_date field. Write a Python method that, when a weekly task is marked complete, calculates the next occurrence's due date, correctly handling month and year boundaries." | Same prompt |
+| **Response summary** | Explained that `date + timedelta` arithmetic already handles month/year rollover automatically, then proposed a standalone `next_due_date()` method as an optional addition — without modifying my existing `mark_complete()` code. Verified the approach with a manual script testing three boundary cases (year rollover, leap-year February, non-leap February) before suggesting anything be changed. | Read my existing `Task`/`mark_complete()` code directly, then autonomously implemented a `next_due_date()` method, refactored `mark_complete()` to call it instead of an inline dict lookup, added new boundary-crossing tests to `test_pawpal.py`, and ran the test suite — all without asking first. |
+| **What was useful** | The explanation of *why* `date + timedelta` handles rollovers correctly (calendar-aware arithmetic through the underlying day count) was genuinely educational, and the manual verification with real dates (2026-12-29 → 2027-01-05, leap year Feb 26 → Mar 4) built confidence in the approach before any code changed. | Moved faster end-to-end — implemented, tested, and verified in one pass. The refactor correctly preserved existing `mark_complete()` behavior (verified by running my full suite, which went from 41 to 43 passing tests, meaning nothing broke and real new coverage was added). |
+| **Problems noticed** | Only proposed a plan — I would have needed a follow-up prompt to actually apply it, which is slower if I already trusted the approach. | Modified my actual codebase directly without asking permission first, meaning I had to review a completed change after the fact via `git diff` rather than approve a plan beforehand. For a change touching core recurrence logic, I would have preferred to review the plan before it was applied to my working code. |
+| **Decision** | Kept Copilot's applied refactor, since I verified via `git diff` and a full test run (43 passed) that it was behaviorally safe and didn't alter any existing test outcomes — including the two "known limitation" tests documenting `mark_complete()`'s current behavior around unknown frequencies and double-completion. | — |
 
 **Which approach did you use in your final implementation and why?**
 
-<!-- Your conclusion -->
+I ended up keeping Copilot's applied `next_due_date()` refactor rather than reverting to my original inline `mark_complete()` logic, since it's a safe, behavior-preserving extraction that also makes the due-date calculation independently reusable and testable. However, I valued Claude Code's more cautious, explain-before-acting workflow more as a *process* — for a change touching core scheduling logic that my existing tests depend on, I'd generally prefer to review a proposed diff before it's applied, rather than review a change that's already been made to my working tree. This reinforced a lesson from earlier in the project: agent autonomy is useful for speed, but for logic with existing test coverage riding on exact behavior, a "propose then apply" workflow gives me more control as the lead architect than a "do then explain" workflow.
